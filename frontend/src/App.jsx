@@ -9,21 +9,19 @@ export default function App() {
     const file = event.target.files[0]
     if (!file) return
 
-    // Reset state for new upload
     setApiData(null)
     setPreviewUrl(URL.createObjectURL(file))
     setIsProcessing(true)
 
-    // Send to your working FastAPI endpoint
     const formData = new FormData()
     formData.append('file', file)
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/translate/', {
+      // UPDATED: Pointing to the new API route
+      const response = await fetch('http://127.0.0.1:8000/api/v1/translate', {
         method: 'POST',
         body: formData,
       })
-
       const jsonResult = await response.json()
       setApiData(jsonResult)
     } catch (err) {
@@ -36,7 +34,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-black font-sans p-6 md:p-12">
       
-      {/* 1. Massive Architectural Header */}
+      {/* 1. Header */}
       <header className="flex flex-col items-center justify-center mb-24 mt-8">
         <h1 className="text-6xl sm:text-7xl md:text-[8.5rem] font-thin tracking-[1.1em] ml-[1.1em] leading-none text-center select-none text-black">
           VISION
@@ -46,39 +44,45 @@ export default function App() {
         </p>
       </header>
 
-      {/* 2. Main Two-Column Grid */}
+      {/* 2. Main Grid */}
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
         
         {/* LEFT COLUMN: Image Ingestion */}
         <section className="space-y-4">
           <div className="text-[0.7rem] font-bold tracking-[0.3em] text-gray-500">[ INGESTION HUB ]</div>
           
-          <div className="relative overflow-hidden bg-white border-2 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all duration-300">
+          <label className="block relative overflow-hidden bg-white border-2 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group">
             <input 
               type="file" 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+              className="hidden"
               onChange={handleFileChange}
               accept="image/png, image/jpeg"
             />
             
             {previewUrl ? (
-              <img src={previewUrl} alt="Uploaded Braille" className="w-full h-auto object-cover grayscale border border-gray-200" />
+              <div className="w-full h-72 relative flex items-center justify-center bg-[#F9F9F9] overflow-hidden">
+                  <img src={previewUrl} alt="Uploaded Braille" className="max-w-full max-h-full object-contain grayscale transition-all duration-500 group-hover:grayscale-0" />
+                  
+                  {/* The AI Scanning Laser */}
+                  {isProcessing && (
+                    <div className="absolute left-0 right-0 h-1 bg-black shadow-[0_0_15px_rgba(0,0,0,0.5)] animate-scanner z-10" />
+                  )}
+              </div>
             ) : (
               <div className="h-72 flex flex-col items-center justify-center bg-[#F9F9F9] border-2 border-dashed border-gray-300 gap-3">
                 <span className="text-3xl text-gray-400">📥</span>
                 <p className="font-bold tracking-[0.25em] text-gray-400 text-[0.75rem]">MOUNT MATRIX FILE</p>
               </div>
             )}
-          </div>
+          </label>
         </section>
 
         {/* RIGHT COLUMN: Output Data */}
         <section className="space-y-4">
           <div className="text-[0.7rem] font-bold tracking-[0.3em] text-gray-500">[ DECRYPTION NODE ]</div>
           
-          <div className="bg-white border-2 border-black p-8 md:p-10 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] min-h-[310px] flex flex-col justify-center transition-all duration-300">
+          <div className="bg-white border-2 border-black p-8 md:p-10 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] min-h-[355px] flex flex-col justify-center transition-all duration-300">
             
-            {/* Loading State */}
             {isProcessing && (
               <div className="space-y-6 text-center py-8">
                 <div className="w-12 h-0.5 bg-black mx-auto animate-pulse" />
@@ -88,27 +92,25 @@ export default function App() {
               </div>
             )}
 
-            {/* Success State (Matches your FastAPI JSON variables) */}
-            {apiData && !isProcessing && (
-              <div className="space-y-8 animate-fade-in">
+            {/* UPDATED: React now looks inside apiData.data and apiData.metrics */}
+            {apiData && apiData.data && !isProcessing && (
+              <div className="space-y-10 animate-fade-in">
                 <div>
-                  <span className="text-[0.65rem] font-bold tracking-[0.25em] text-gray-400 uppercase block mb-3">
+                  <span className="text-[0.65rem] font-bold tracking-[0.25em] text-gray-400 uppercase block mb-4">
                     Class (A) Translation:
                   </span>
-                  <h2 className="text-5xl md:text-6xl font-black tracking-tight border-b-4 border-black pb-6 break-words uppercase text-black">
-                    {apiData.translated_text}
+                  <h2 className="text-4xl md:text-5xl font-black tracking-tight border-b-4 border-black pb-8 break-words uppercase text-black leading-tight">
+                    {apiData.data.translated_text}
                   </h2>
                 </div>
 
-                {/* Metrics */}
-                <div className="flex justify-between items-center text-xs font-bold tracking-widest text-gray-600 pt-4">
-                  <span>LATENCY: {apiData.latency_ms}ms</span>
-                  <span>TOKENS: {apiData.detected_tokens}</span>
+                <div className="flex justify-between items-center text-xs font-bold tracking-widest text-gray-600 pt-2">
+                  <span>LATENCY: {apiData.metrics.latency_ms}ms</span>
+                  <span>TOKENS: {apiData.metrics.token_count}</span>
                 </div>
               </div>
             )}
 
-            {/* Empty State */}
             {!previewUrl && !isProcessing && !apiData && (
               <div className="text-center py-12 space-y-2">
                 <p className="text-[0.75rem] font-bold tracking-[0.3em] text-gray-300">SYSTEM STANDBY</p>
@@ -118,7 +120,6 @@ export default function App() {
 
           </div>
         </section>
-
       </main>
     </div>
   )
