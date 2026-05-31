@@ -1,13 +1,40 @@
 @import "tailwindcss";
 
-/* AI Matrix Scanner Animation */
+/* 1. Existing AI Matrix Scanner */
 @keyframes scan-line {
   0% { top: 0%; opacity: 0; }
   10% { opacity: 1; }
   90% { opacity: 1; }
   100% { top: 100%; opacity: 0; }
 }
-
 .animate-scanner {
   animation: scan-line 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* 2. Cyberpunk Decryption Typewriter */
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: #22d3ee; } /* Cyan-400 */
+}
+.animate-typewriter {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 4px solid #22d3ee; /* Cyan-400 */
+  animation: typing 1.5s steps(20, end), blink-caret 0.75s step-end infinite;
+}
+
+/* 3. Startup-Grade 3D Perspective Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
 }
