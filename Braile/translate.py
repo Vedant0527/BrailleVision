@@ -1,4 +1,4 @@
-from braille_dict import (
+from .braille_dict import (
     BRAILLE_DICT,
     number_map,
     NUMBER_SIGN,
