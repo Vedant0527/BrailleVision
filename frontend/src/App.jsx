@@ -1,5 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ParticleBackground from './ParticleBackground'
+
+// Native React Typewriter Component to completely bypass layout/CSS collapse bugs
+function ReactTypewriter({ text }) {
+  const [displayedText, setDisplayedText] = useState('')
+
+  useEffect(() => {
+    setDisplayedText('')
+    if (!text) return
+
+    let i = 0
+    const interval = setInterval(() => {
+      setDisplayedText((prev) => prev + text.charAt(i))
+      i++
+      if (i >= text.length) {
+        clearInterval(interval)
+      }
+    }, 75) // Dictates smooth typewriter character delay speeds
+
+    return () => clearInterval(interval)
+  }, [text])
+
+  return (
+    <span className="text-white border-r-4 border-cyan-400 pr-1 animate-pulse font-black uppercase tracking-tight">
+      {displayedText}
+    </span>
+  )
+}
 
 export default function App() {
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -42,7 +69,7 @@ export default function App() {
         <h1 className="text-6xl sm:text-7xl md:text-[8.5rem] font-thin tracking-[1.1em] ml-[1.1em] leading-none text-center select-none text-white drop-shadow-md">
           VISION
         </h1>
-        <p className="mt-6 text-[0.65rem] sm:text-xs font-bold tracking-[0.5em] text-cyan-400 uppercase text-center glow">
+        <p className="mt-6 text-[0.65rem] sm:text-xs font-bold tracking-[0.5em] text-cyan-400 uppercase text-center">
           The Architecture of Accessibility
         </p>
       </header>
@@ -66,7 +93,7 @@ export default function App() {
               <div className="w-full h-72 relative flex items-center justify-center bg-[#111] overflow-hidden border border-gray-800">
                   <img src={previewUrl} alt="Uploaded Braille" className="max-w-full max-h-full object-contain grayscale invert opacity-90 transition-all duration-500 group-hover:invert-0 group-hover:opacity-100" />
                   
-                  {/* The AI Scanning Laser (NEON CYAN) */}
+                  {/* The AI Scanning Laser */}
                   {isProcessing && (
                     <div className="absolute left-0 right-0 h-1 bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,1)] animate-scanner z-10" />
                   )}
@@ -96,15 +123,15 @@ export default function App() {
             )}
 
             {apiData && apiData.data && !isProcessing && (
-              <div className="space-y-10 transform translate-z-12 animate-fade-in">
+              <div className="space-y-10 transform translate-z-12">
                 <div>
                   <span className="text-[0.65rem] font-bold tracking-[0.25em] text-gray-500 uppercase block mb-4">
                     Class (A) Translation:
                   </span>
                   
                   <div className="inline-block border-b-2 border-gray-700 pb-4">
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tight uppercase text-white leading-tight animate-typewriter">
-                      {apiData.data.translated_text}
+                    <h2 className="text-4xl md:text-5xl font-black leading-tight text-white">
+                      <ReactTypewriter text={apiData.data.translated_text} />
                     </h2>
                   </div>
                 </div>
