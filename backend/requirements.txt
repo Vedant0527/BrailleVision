@@ -1,0 +1,33 @@
+# Web Framework & Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+
+# Computer Vision & Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+
+# Image & Array Processing
+Pillow>=10.0.0
+numpy>=1.24.0
+
+
+# difflib is part of Python Standard Library
+
+
+## Frontend Prerequisites
+
+Before running the React frontend, ensure the following are installed:
+
+### Required Software
+
+- Node.js 18.0.0 or higher
+- npm 9.0.0 or higher
+- Modern Web Browser:
+  - Google Chrome
+  - Microsoft Edge
+  - Safari
+
+The application uses the browser's native Web Speech API (`window.speechSynthesis`) for text-to-speech functionality.

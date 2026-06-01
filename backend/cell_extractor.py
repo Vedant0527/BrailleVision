@@ -15,7 +15,7 @@ def extract_pattern(cell_img):
     
     block_size = max(11, (w // 2) | 1)
     
-    # Increased C to 15 to completely kill faint background noise
+    # RESTORED: C=15 to kill faint paper grain and shadows
     thresh = cv2.adaptiveThreshold(
         img_clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
         cv2.THRESH_BINARY_INV, block_size, 15 
@@ -36,15 +36,15 @@ def extract_pattern(cell_img):
     ]
     
     for col, row in grid:
-        # Get the EXACT center point of this sector
+        # 1. Find the DEAD CENTER of the specific sector
         cx = int(col * cell_w + cell_w / 2.0)
         cy = int(row * cell_h + cell_h / 2.0)
         
-        # CORE SAMPLING: Create a safe zone using only 25% of the radius. 
-        # This completely ignores all edges and neighbor shadows.
+        # 2. Strict 25% Safe Zone to prevent neighbor-dot bleeding
         rx = max(2, int(cell_w * 0.25))
         ry = max(2, int(cell_h * 0.25))
         
+        # 3. Crop strictly from the center
         roi = clean_thresh[max(0, cy-ry) : min(h, cy+ry), max(0, cx-rx) : min(w, cx+rx)]
         
         if roi.size == 0:
@@ -53,13 +53,13 @@ def extract_pattern(cell_img):
             
         density = cv2.countNonZero(roi) / roi.size
         
-        # Because we only sample the dead center, a real dot fills 25%+ easily. Noise doesn't.
+        # 4. RESTORED: 25% density requirement for a valid physical dot
         if density > 0.25:
             bits += "1"
-            cv2.rectangle(debug_img, (cx-rx, cy-ry), (cx+rx, cy+ry), (0, 255, 0), 1)
+            cv2.rectangle(debug_img, (cx-rx, cy-ry), (cx+rx, cy+ry), (0, 255, 0), 1) # Green = Dot Found
         else:
             bits += "0"
-            cv2.rectangle(debug_img, (cx-rx, cy-ry), (cx+rx, cy+ry), (0, 0, 255), 1)
+            cv2.rectangle(debug_img, (cx-rx, cy-ry), (cx+rx, cy+ry), (0, 0, 255), 1) # Red = Empty
             
     random_id = str(uuid.uuid4())[:6]
     cv2.imwrite(f"{DEBUG_DIR}/cell_{bits}_{random_id}.png", debug_img)

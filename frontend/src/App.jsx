@@ -1,5 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import ParticleBackground from './ParticleBackground'
+
+/** Maps on-screen tokens to phrasing TTS can pronounce naturally (UI text unchanged). */
+const PHONETIC_MAP = {
+  JIHIND: 'Jai Hind',
+  JAIHIND: 'Jai Hind',
+  INDIA: 'India',
+  SCIOBRAILLE: 'Sigh oh Braille',
+  VISUALLYIMPAIR: 'Visually Impaired',
+  GREATPROJECT: 'Great Project',
+}
+
+function formatTextForSpeech(rawText) {
+  if (!rawText?.trim()) return ''
+  return rawText
+    .split(/\s+/)
+    .map((word) => {
+      const key = word.replace(/[^A-Za-z]/g, '').toUpperCase()
+      return key && PHONETIC_MAP[key] ? PHONETIC_MAP[key] : word
+    })
+    .join(' ')
+}
+
+function SpeakerIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-6 h-6"
+      aria-hidden="true"
+    >
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+    </svg>
+  )
+}
 
 // Native React Typewriter Component to completely bypass layout/CSS collapse bugs
 function ReactTypewriter({ text }) {
@@ -33,10 +68,124 @@ export default function App() {
   const [apiData, setApiData] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
+  /** Pin utterance so Chromium GC cannot collect it mid-playback */
+  const utteranceRef = useRef(null)
+
+  const translatedText = apiData?.data?.translated_text?.trim() ?? ''
+
+  const cancelSpeech = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    utteranceRef.current = null
+    window._activeUtterance = null
+  }, [])
+
+  const pickEnglishVoice = useCallback(() => {
+    try {
+      const voices = window.speechSynthesis?.getVoices() ?? []
+      if (!voices.length) return null
+      return (
+        voices.find((v) => v.lang === 'en-US') ||
+        voices.find((v) => v.lang.startsWith('en')) ||
+        null
+      )
+    } catch {
+      return null
+    }
+  }, [])
+
+  const doSpeak = useCallback(
+    (text) => {
+      const synth = window.speechSynthesis
+      if (!text?.trim() || !synth) return
+
+      synth.cancel()
+
+      const utterance = new SpeechSynthesisUtterance(text.trim())
+      utterance.rate = 0.95
+      utterance.pitch = 1
+      utterance.volume = 1
+
+      const voice = pickEnglishVoice()
+      if (voice) {
+        utterance.voice = voice
+      }
+
+      utterance.onstart = () => console.log('📣 TTS Speech started successfully!')
+      utterance.onerror = (e) =>
+        console.error('❌ TTS Speech error event:', e.error)
+      utterance.onend = () => {
+        if (utteranceRef.current === utterance) utteranceRef.current = null
+        if (window._activeUtterance === utterance) window._activeUtterance = null
+      }
+
+      utteranceRef.current = utterance
+      window._activeUtterance = utterance
+
+      synth.speak(utterance)
+      if (synth.paused) synth.resume()
+    },
+    [pickEnglishVoice]
+  )
+
+  const speakText = useCallback(
+    (text) => {
+      if (!text?.trim() || typeof window === 'undefined' || !window.speechSynthesis) {
+        console.warn('TTS unavailable or empty text')
+        return
+      }
+
+      const speechText = formatTextForSpeech(text)
+      const run = () => setTimeout(() => doSpeak(speechText), 50)
+
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length === 0) {
+        const onVoices = () => {
+          window.speechSynthesis.removeEventListener('voiceschanged', onVoices)
+          console.log(
+            'TTS voices loaded:',
+            window.speechSynthesis.getVoices().length
+          )
+          run()
+        }
+        window.speechSynthesis.addEventListener('voiceschanged', onVoices)
+        window.speechSynthesis.getVoices()
+        return
+      }
+
+      run()
+    },
+    [doSpeak]
+  )
+
+  const handleReplaySpeech = useCallback(() => {
+    if (translatedText) speakText(translatedText)
+  }, [translatedText, speakText])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+    const warm = () => {
+      const n = window.speechSynthesis.getVoices().length
+      if (n > 0) console.log('TTS voices preloaded:', n)
+    }
+    warm()
+    window.speechSynthesis.addEventListener('voiceschanged', warm)
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', warm)
+      cancelSpeech()
+    }
+  }, [cancelSpeech])
+
+  useEffect(() => {
+    if (!translatedText || isProcessing) return
+    speakText(translatedText)
+  }, [translatedText, isProcessing, speakText])
+
   const handleFileChange = async (event) => {
     const file = event.target.files[0]
     if (!file) return
 
+    cancelSpeech()
     setApiData(null)
     setPreviewUrl(URL.createObjectURL(file))
     setIsProcessing(true)
@@ -129,10 +278,19 @@ export default function App() {
                     Class (A) Translation:
                   </span>
                   
-                  <div className="inline-block border-b-2 border-gray-700 pb-4">
-                    <h2 className="text-4xl md:text-5xl font-black leading-tight text-white">
+                  <div className="flex flex-wrap items-start gap-4 border-b-2 border-gray-700 pb-4">
+                    <h2 className="text-4xl md:text-5xl font-black leading-tight text-white flex-1 min-w-0">
                       <ReactTypewriter text={apiData.data.translated_text} />
                     </h2>
+                    <button
+                      type="button"
+                      onClick={handleReplaySpeech}
+                      aria-label="Read translation aloud again"
+                      title="Read aloud"
+                      className="shrink-0 flex items-center justify-center w-14 h-14 border-2 border-cyan-400 text-cyan-400 bg-black hover:bg-cyan-400 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-200 shadow-[4px_4px_0px_0px_rgba(34,211,238,1)] hover:shadow-[6px_6px_0px_0px_rgba(34,211,238,1)]"
+                    >
+                      <SpeakerIcon />
+                    </button>
                   </div>
                 </div>
 
